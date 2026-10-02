@@ -86,12 +86,16 @@ El script lee los datos entregados (no entrena), escribe `resultados/metricas_po
 |---|---|---|
 | `diagrama_proceso_general.png` | Metodología | Flujo completo de la metodología. |
 | `preprocesamiento_antes_despues.png` | Metodología | Efecto del preprocesamiento sobre una subportadora CSI real. |
-| `sincronizacion_csi_smartwatch.png` | Metodología | Sincronización de las lecturas del smartwatch y construcción de y_i. |
+| `sincronizacion_csi_smartwatch.png` | Metodología | Sincronización de las lecturas del smartwatch en una ventana (V3): criterio sync_ok y construcción de y_i. |
 | `diagrama_calibracion.png` | Experimentación | Procedimiento secuencial de selección de características e hiperparámetros. |
 
 Las figuras metodológicas se dibujan a su tamaño de inserción (16 cm de ancho; fuentes de 8–9 pt). La grabación de
 ejemplo (participante 002, posición 1) se eligió por el número mediano de lecturas del reloj, sin mirar la señal CSI.
-La tabla de calibración está en `resultados/tabla_calibracion.md` y los pies de figura, en `figuras/pies_de_figura.md`.
+Tablas de referencia para la tesis: calibración de características e hiperparámetros
+(`resultados/tabla_calibracion.md`) y comparación del MAE con trabajos relacionados (`resultados/tabla_mae_literatura.md`).
+Los pies de figura están en `figuras/pies_de_figura.md`.
+
+- `resultados/tabla_metricas_finales.md`: resumen de MAE, RMSE y coeficiente de Pearson para RF, SVR, B1 y B0 en las 33 corridas experimentales.
 
 ### Figuras de resultados (`figuras/`)
 

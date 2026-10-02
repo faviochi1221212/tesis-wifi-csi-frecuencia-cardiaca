@@ -128,10 +128,10 @@ def preprocesamiento(P, fig_dir, adic_dir):
     with _estilo():
         fig, (a1, a2) = plt.subplots(2, 1, figsize=(ANCHO, 3.5), sharex=True, gridspec_kw={"hspace": 0.42})
         a1.plot(t, x_raw, color=INK2, linewidth=0.7)
-        a1.set_title("Señal CSI antes del preprocesamiento", loc="left", color=INK)
+        a1.set_title("Amplitud CSI original", loc="left", color=INK)
         a1.set_ylabel("Amplitud |H|")
         a2.plot(t, e4, color=ACC, linewidth=0.8)
-        a2.set_title("Señal CSI después del preprocesamiento", loc="left", color=INK)
+        a2.set_title("Señal CSI preprocesada y normalizada", loc="left", color=INK)
         a2.set_ylabel("Amplitud\nnormalizada"); a2.set_ylim(-1.15, 1.15); a2.set_yticks([-1, 0, 1])
         a2.set_xlabel("Tiempo (s)"); a2.set_xlim(t[0] - 0.5, t[-1] + 0.5)
         for a in (a1, a2):
@@ -174,62 +174,87 @@ def _validar_sincronizacion(J):
 
 
 def sincronizacion(J, fig_dir):
+    """Una sola ventana (V3). Panel superior: lecturas, interpolacion y criterio sync_ok (+-15 s del paquete
+    central). Panel inferior: construccion de la referencia y_3 (media en los 231 paquetes)."""
     _validar_sincronizacion(J)
-    win = J["ventanas"]; a_x, b_x = J["xlim"]
+    w = J["ventanas"][2]; a_x, b_x = J["xlim"]
+    lt, lh = np.array(J["lecturas_t_s"]), np.array(J["lecturas_hr"])
+    k_near = int(np.argmin(np.abs(lt - w["centro"])))             # lectura real mas cercana al paquete central
+    if not (abs(abs(lt[k_near] - w["centro"]) - w["dist_lectura_centro_s"]) < 1e-9 and w["dist_lectura_centro_s"] <= 15):
+        raise RuntimeError("la lectura mas cercana no cumple el criterio sync_ok")
+    ZONA = "#eef4fc"
     with _estilo():
-        fig, (ax, axw) = plt.subplots(2, 1, figsize=(ANCHO, 3.6), sharex=True,
-                                      gridspec_kw={"height_ratios": [1.15, 1], "hspace": 0.28})
-        ax.plot(J["paquetes_t_s"], J["paquetes_hr_interp"], color="#9a9993", linewidth=1.2, label="Interpolación lineal", zorder=1)
-        ax.scatter(J["lecturas_t_s"], J["lecturas_hr"], s=34, color=INK, zorder=3, label="Lecturas del smartwatch")
+        fig, (ax, axw) = plt.subplots(2, 1, figsize=(ANCHO, 3.4), sharex=True,
+                                      gridspec_kw={"height_ratios": [1.6, 1.05], "hspace": 0.10})
+        # criterio sync_ok (+-15 s alrededor del paquete central): solo en el panel superior
+        ax.axvspan(w["centro"] - 15, w["centro"] + 15, color=ZONA, zorder=0, linewidth=0)
+        for xv in (w["centro"] - 15, w["centro"] + 15):
+            ax.axvline(xv, color=INK2, linewidth=0.7, linestyle=(0, (3, 2)), zorder=1)
+        ax.text(w["centro"], lh.max() + 1.15, "criterio sync_ok: ±15 s", ha="center", va="bottom", fontsize=8, color=INK2,
+                clip_on=False)
+        ax.plot(J["paquetes_t_s"], J["paquetes_hr_interp"], color="#9a9993", linewidth=1.2, label="Interpolación", zorder=2)
+        ax.scatter(lt, lh, s=30, color=INK, zorder=3, label="Lecturas del smartwatch")
+        ax.scatter(lt[k_near], lh[k_near], s=95, facecolor="none", edgecolor=ACC, linewidth=1.3, zorder=4,
+                   label="Más cercana al centro")
+        ax.hlines(w["y"], w["ini"], w["fin"], color=ACC, linewidth=1.8, linestyles=(0, (4, 2)), zorder=3, label="$y_3$")
         ax.set_ylabel("FC (BPM)"); ax.grid(True, axis="y", color=GRID, linewidth=0.6)
-        ax.legend(loc="upper right", ncol=2, handletextpad=0.3, columnspacing=1.2)
-        ylo, yhi = min(J["lecturas_hr"]) - 1.2, max(J["lecturas_hr"]) + 1.6; ax.set_ylim(ylo, yhi)
-        n = len(win)
-        for k, w in enumerate(win):
-            lane = n - k
-            axw.barh(lane, w["fin"] - w["ini"], left=w["ini"], height=0.62, color=ACC_L, edgecolor=ACC, linewidth=0.6)
-            axw.plot([w["centro"]] * 2, [lane - 0.31, lane + 0.31], color=ACC, linewidth=1.4)
-            axw.text(w["centro"] + 0.7, lane, f"$y_{k + 1}$ = {w['y']:.1f}", ha="left", va="center", fontsize=8, color=INK)
-        w3 = win[2]; ly = n - 2 + 0.47              # criterio de +-15 s ilustrado solo en V3
-        axw.annotate("", xy=(w3["centro"] - 15, ly), xytext=(w3["centro"] + 15, ly),
-                     arrowprops={"arrowstyle": "|-|,widthA=0.25,widthB=0.25", "color": INK2, "linewidth": 0.7})
-        axw.text(w3["centro"] + 15.6, ly, "±15 s del centro:\nal menos una lectura", ha="left", va="center", fontsize=8,
-                 color=INK2, linespacing=1.1)
-        axw.set_title("Ventanas CSI y referencia $y_i$ de cada ventana (BPM)", loc="left", fontsize=8.5, color=INK, pad=3)
-        axw.set_yticks(range(1, n + 1)); axw.set_yticklabels([f"V{n - i + 1}" for i in range(1, n + 1)])
-        axw.set_ylim(0.45, n + 0.85); axw.tick_params(axis="y", length=0)
-        axw.spines["left"].set_visible(False)
-        axw.set_xlabel("Tiempo (s)"); axw.set_xlim(a_x, b_x)
         ax.yaxis.set_major_locator(matplotlib.ticker.MultipleLocator(2))
+        ax.set_ylim(lh.min() - 1.0, lh.max() + 1.0)
+        ax.legend(loc="upper right", ncol=2, handletextpad=0.35, columnspacing=1.0, borderaxespad=0.2, handlelength=1.6)
+        # panel inferior: una sola ventana (V3)
+        axw.barh(0, w["fin"] - w["ini"], left=w["ini"], height=0.44, color=ACC_L, edgecolor=ACC, linewidth=0.8, zorder=2)
+        axw.plot([w["centro"]] * 2, [-0.22, 0.22], color=ACC, linewidth=1.6, zorder=3)
+        axw.text((w["ini"] + w["centro"]) / 2, 0, "Ventana V3", ha="center", va="center", fontsize=8, color=INK, zorder=4)
+        axw.text((w["centro"] + w["fin"]) / 2, 0, "231 paquetes", ha="center", va="center", fontsize=8, color=INK, zorder=4)
+        for xx, et in ((w["ini"], "inicio"), (w["centro"], "paquete central"), (w["fin"], "fin")):
+            axw.text(xx, 0.30, et, ha="center", va="bottom", fontsize=8, color=INK2)
+        axw.text(w["centro"], -0.32, "$y_3$ = media de la frecuencia cardíaca interpolada en los 231 paquetes = "
+                 + f"{w['y']:.1f} BPM", ha="center", va="top", fontsize=8, color=INK)
+        axw.set_ylim(-0.85, 0.75); axw.set_yticks([]); axw.spines["left"].set_visible(False)
+        axw.set_xlabel("Tiempo (s)"); axw.set_xlim(a_x, b_x)
         fig.align_ylabels([ax, axw])
         return _guardar(fig, fig_dir, "sincronizacion_csi_smartwatch")
 
 
 # ====================================================================== calibracion
 def diagrama_calibracion(fig_dir):
+    """Fila unica: datos -> [Etapa 1 -> Etapa 2] (validacion interna) -> reentrenamiento -> prediccion unica del test."""
     with _estilo():
-        fig, ax = _lienzo(2.45)
-        bw, bh, yc = 1.22, 0.86, 1.52
-        cx = [0.70, 2.30, 3.82, 5.52]
-        band_x0, band_x1 = cx[1] - bw / 2 - 0.17, cx[2] + bw / 2 + 0.17      # banda de la validacion interna
-        ax.add_patch(FancyBboxPatch((band_x0, yc - bh / 2 - 0.12), band_x1 - band_x0, bh + 0.48,
+        fig, ax = _lienzo(1.90)
+        bh, yc, g = 0.92, 0.88, 0.17                       # alto de caja, centro vertical, hueco de flecha
+        anchos = {"datos": 0.92, "e1": 1.10, "e2": 1.10, "reent": 1.16, "test": 0.98}
+        pad_band = 0.08
+        x = 0.04
+        cx_d = x + anchos["datos"] / 2; x += anchos["datos"] + g
+        band_x0 = x; x += pad_band
+        cx_1 = x + anchos["e1"] / 2; x += anchos["e1"] + g
+        cx_2 = x + anchos["e2"] / 2; x += anchos["e2"] + pad_band
+        band_x1 = x; x += g
+        cx_r = x + anchos["reent"] / 2; x += anchos["reent"] + g
+        cx_t = x + anchos["test"] / 2; x += anchos["test"]
+        if x > ANCHO - 0.03:
+            raise RuntimeError("el diagrama de calibracion excede el ancho de insercion")
+        band_y0, band_y1 = yc - bh / 2 - 0.09, yc + bh / 2 + 0.42
+        ax.add_patch(FancyBboxPatch((band_x0, band_y0), band_x1 - band_x0, band_y1 - band_y0,
                                     boxstyle=f"round,pad=0,rounding_size={R}", facecolor="white", edgecolor=ACC, linewidth=0.9))
-        ax.text((band_x0 + band_x1) / 2, yc + bh / 2 + 0.2, "Validación interna: 5 folds agrupados por grabación",
-                ha="center", va="center", fontsize=8, color=ACC)
-        _caja(ax, cx[0], yc, bw, bh, "Datos de\nentrenamiento\nde la semilla")
-        _caja(ax, cx[1], yc, bw, bh, "Etapa 1\nSelección de\ncaracterísticas\n(MI o PI, N, w)", fill=ACC_L)
-        _caja(ax, cx[2], yc, bw, bh, "Etapa 2\nAjuste de\nhiperparámetros\n(RF o SVR, w)", fill=ACC_L)
-        _caja(ax, cx[3], yc, 1.30, bh, "Reentrenamiento\ncon todo el\nentrenamiento")
-        _flecha(ax, (cx[0] + bw / 2, yc), (band_x0, yc))
-        _flecha(ax, (cx[1] + bw / 2, yc), (cx[2] - bw / 2, yc))
-        _flecha(ax, (band_x1, yc), (cx[3] - 0.65, yc))
-        ax.text((band_x0 + band_x1) / 2, yc - bh / 2 - 0.27,
-                "Criterio: menor MAE de validación interna  ·  PI calculada con un RF base",
-                ha="center", va="center", fontsize=8, color=INK2)
-        _caja(ax, cx[3], 0.30, 1.30, 0.50, "Predicción única\ndel conjunto\nde prueba", fill="white", dashed=True)
-        _flecha(ax, (cx[3], yc - bh / 2), (cx[3], 0.30 + 0.25))
-        ax.text(cx[3] - 0.80, 0.30, "El conjunto de prueba no\ninterviene en la calibración", ha="right", va="center",
-                fontsize=8, color=INK2)
+        ax.text((band_x0 + band_x1) / 2, yc + bh / 2 + 0.21, "Validación interna:\n5 folds agrupados por grabación",
+                ha="center", va="center", fontsize=8, color=ACC, linespacing=1.1)
+        _caja(ax, cx_d, yc, anchos["datos"], bh, "Datos de\nentrenamiento", fs=8)
+        _caja(ax, cx_1, yc, anchos["e1"], bh, "", fill=ACC_L, fs=8)
+        ax.text(cx_1, yc + 0.07, "Etapa 1\nSelección de\ncaracterísticas\n(MI o PI, N, w)", ha="center", va="center",
+                fontsize=8, color=INK, linespacing=1.15)
+        ax.text(cx_1, yc - bh / 2 + 0.13, "PI con RF base", ha="center", va="center", fontsize=8, color=INK2, style="italic")
+        _caja(ax, cx_2, yc, anchos["e2"], bh, "Etapa 2\nAjuste de\nhiperparámetros\n(RF o SVR, w)", fill=ACC_L, fs=8)
+        _caja(ax, cx_r, yc, anchos["reent"], bh, "Reentrenamiento\ncon todo el\nentrenamiento", fs=8)
+        _caja(ax, cx_t, yc, anchos["test"], bh, "Predicción\núnica del\nconjunto de\nprueba", fill="white", dashed=True, fs=8)
+        ax.text(cx_t, yc - bh / 2 - 0.08, "No interviene en\nla calibración", ha="center", va="top", fontsize=8, color=INK2,
+                linespacing=1.1)
+        ax.text((band_x0 + band_x1) / 2, band_y0 - 0.08, "Criterio: menor MAE de validación interna", ha="center",
+                va="top", fontsize=8, color=INK2)
+        _flecha(ax, (cx_d + anchos["datos"] / 2, yc), (band_x0, yc))
+        _flecha(ax, (cx_1 + anchos["e1"] / 2, yc), (cx_2 - anchos["e2"] / 2, yc))
+        _flecha(ax, (band_x1, yc), (cx_r - anchos["reent"] / 2, yc))
+        _flecha(ax, (cx_r + anchos["reent"] / 2, yc), (cx_t - anchos["test"] / 2, yc))
         return _guardar(fig, fig_dir, "diagrama_calibracion")
 
 

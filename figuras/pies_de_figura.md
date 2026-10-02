@@ -8,14 +8,12 @@ estimación y evaluación de la frecuencia cardíaca.
 
 **preprocesamiento_antes_despues.png**
 Ejemplo del efecto del preprocesamiento sobre una subportadora CSI. Se muestra la amplitud original y la señal obtenida
-después de aplicar detrend lineal, filtrado de Hampel, filtro Butterworth pasabanda y normalización min-max. La
-subportadora fue seleccionada automáticamente por el criterio de energía utilizado en el pipeline. La señal procesada no
-representa directamente la frecuencia cardíaca.
+después de aplicar detrend lineal, filtrado de Hampel, filtro Butterworth pasabanda y normalización min-max.
 
 **sincronizacion_csi_smartwatch.png**
-Sincronización temporal entre las mediciones CSI y la referencia cardíaca. Las lecturas del smartwatch se interpolan en
-las marcas temporales de los paquetes CSI y cada ventana recibe como referencia y_i la media de los valores interpolados
-correspondientes a sus 231 paquetes. Se conservan únicamente las ventanas con al menos una lectura real del smartwatch a
+Ejemplo de sincronización temporal entre las mediciones CSI y la referencia cardíaca. Las lecturas del smartwatch se
+interpolan en las marcas temporales de los paquetes CSI. Para cada ventana, la referencia y_i corresponde a la media de
+los valores interpolados de sus 231 paquetes. La ventana se conserva si existe al menos una lectura real del smartwatch a
 15 s o menos del paquete central.
 
 ## Experimentación
