@@ -15,11 +15,12 @@ No es un escenario de participantes nuevos.
 ```
 codigo/src/csi_hr/        librería del experimento
 codigo/pipeline/          final_personalized.py: ejecuta el experimento final
-codigo/generar_resultados.py   métricas y figuras a partir de las predicciones entregadas
+codigo/generar_resultados.py   métricas y figuras a partir de los datos entregados
+codigo/extraer_sincronizacion.py   insumo de la figura de sincronización (requiere los datos crudos)
 datos_procesados/         datos de entrada congelados (ventanas, características, particiones)
 resultados/               predicciones, métricas, configuraciones elegidas y auditoría de fuga
-figuras/                  figuras 1, 2 y 3 (cuerpo de la tesis)
-material_adicional/       figura 4 (anexo / sustentación; no es figura principal)
+figuras/                  figuras utilizadas en la tesis
+material_adicional/       ejemplos por grabación (sustentación)
 ```
 
 Módulos de `codigo/src/csi_hr/`:
@@ -47,6 +48,7 @@ pip install -r requirements.txt
 | `dataset_completo_v3_synced.csv` | Ventanas, referencia de frecuencia cardíaca (`bpm_watch`) y criterio de sincronización (`sync_ok`) |
 | `features_rf_3brazos.csv.gz` | 24 características por ventana. El experimento usa las filas `arm == "E1a"` (54 subportadoras activas). |
 | `splits_rf.json` | Particiones entrenamiento/prueba de las 33 semillas |
+| `sincronizacion_ejemplo.json` | Valores de la figura de sincronización y tabla del criterio de selección. Lo genera `codigo/extraer_sincronizacion.py` a partir de los datos crudos (no es un insumo del experimento). |
 
 Muestra final: **125 participantes, 1481 grabaciones, 7397 ventanas**, 12 posiciones estáticas (códigos 1, 2 y
 4–13). Cada ventana tiene 231 paquetes con un paso de 57 (≈30 s a la frecuencia nominal de 7,7 Hz; el muestreo
@@ -71,21 +73,29 @@ python codigo/pipeline/final_personalized.py --clean --resume           # las 33
 python codigo/generar_resultados.py
 ```
 
-El script lee las predicciones entregadas (no entrena) y escribe `resultados/metricas_por_semilla.csv`,
-`resultados/metricas_finales.csv` y las figuras:
+El script lee los datos entregados (no entrena), escribe `resultados/metricas_por_semilla.csv` y
+`resultados/metricas_finales.csv`, y regenera todas las figuras. Los PDF se generan solo localmente
+(`.gitignore`); el repositorio versiona los PNG.
 
-- **Figura 1:** (a) MAE de las 33 corridas para RF, SVR, B1 y B0; (b) diferencias B1−RF y B1−SVR por semilla.
-- **Figura 2:** referencia, RF, SVR y B1 en las dos grabaciones de prueba del participante 048, semilla 27.
-  La selección no se hizo por el error. Primero se toma la semilla cuyo MAE medio (RF+SVR) es la mediana de las
-  33 corridas. Después, dentro de ella, la grabación de prueba con el MAE más cercano a la mediana. Se muestran
-  las dos grabaciones de prueba de ese participante.
-- **Figura 3:** frecuencia cardíaca de referencia y la estimada por SVR en todo el conjunto de prueba de la
-  semilla 27 (1241 ventanas de 249 grabaciones; MAE = 8.42 BPM, r = 0.712). Las ventanas están ordenadas por
-  participante, grabación y tiempo. Las curvas se interrumpen entre grabaciones: no es una señal continua.
-  Se muestra SVR porque tuvo el menor MAE medio en las 33 corridas (8.384 frente a 8.406 de RF); la diferencia
-  es pequeña y no indica superioridad.
-- **Figura 4** (`material_adicional/`): RF y SVR frente a la misma referencia y las mismas ventanas. No es una
-  figura principal porque las predicciones de ambos modelos son casi idénticas (r = 0.995 entre sí).
+### Figuras utilizadas en la tesis (`figuras/`)
+
+| Figura | Ubicación | Contenido |
+|---|---|---|
+| `figura_sincronizacion_csi_smartwatch.png` | Metodología | Lecturas del smartwatch, interpolación lineal, ventanas CSI y etiqueta y_i de cada ventana (participante 002, posición 1, elegido por el número mediano de lecturas del reloj). |
+| `figura_mae_33_corridas.png` | Resultados | Distribución del MAE de RF, SVR, B1 y B0 en las 33 corridas (cajas, corridas individuales y media). |
+| `figura_comparacion_rf_svr_test.png` | Resultados | Compara la frecuencia cardíaca de referencia con las estimaciones de Random Forest y SVR sobre el mismo conjunto de prueba representativo correspondiente a la semilla 27. |
+| `figura_mejora_respecto_b1.png` | Resultados o anexo, según el espacio | Reducción del MAE de RF y SVR respecto de B1 en cada semilla (figura secundaria). |
+
+La semilla 27 es la de MAE mediano entre las 33 corridas. Pie de la figura comparativa: *"Comparación entre la
+frecuencia cardíaca de referencia y la estimada por Random Forest y SVR en el conjunto de prueba de la semilla 27.
+Las ventanas se ordenan por participante, grabación y tiempo, y las curvas se interrumpen entre grabaciones."*
+
+### Material adicional (`material_adicional/`)
+
+`figura_ejemplo_prediccion_1.png` y `figura_ejemplo_prediccion_2.png` muestran referencia, SVR y B1 en las dos
+grabaciones de prueba del participante 048 (semilla 27; posiciones 9 y 5). La primera es la grabación con el MAE
+más cercano a la mediana de las 249 grabaciones de prueba; la segunda, la otra grabación de prueba del mismo
+participante. Son ejemplos locales para la sustentación, no figuras principales.
 
 ## 7. Modelos y líneas base
 
