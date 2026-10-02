@@ -332,6 +332,53 @@ def generar_tabla_comparacion_literatura(M):
     return {f[0]: {"MAE": f[2], "RMSE": f[3], "CC": f[4]} for f in propias}
 
 
+def _tabla_visual(filas, cabecera, anchos, titulo, nombre, resaltar=()):
+    """Tabla visual de 16 cm (encabezado azul, texto blanco, bordes finos, texto centrado, 8 pt). Las filas cuyo primer
+    campo esta en 'resaltar' se muestran en azul claro y negrita."""
+    with estilo(ESTILO_CLASICO):
+        lineas = [1] + [max(c.count("\n") + 1 for c in f) for f in filas]
+        altos = [max(0.27, 0.155 * n + 0.1) for n in lineas]                       # pulgadas por fila
+        alto_fig = sum(altos) + 0.05
+        fig = plt.figure(figsize=(6.3, alto_fig))
+        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")
+        tab = ax.table(cellText=[list(f) for f in filas], colLabels=list(cabecera), colWidths=list(anchos),
+                       cellLoc="center", loc="upper center")
+        tab.auto_set_font_size(False); tab.set_fontsize(8)
+        for (fila, col), celda in tab.get_celld().items():
+            celda.set_edgecolor("#000000"); celda.set_linewidth(0.6)
+            celda.set_height(altos[fila] / alto_fig)
+            if fila == 0:
+                celda.set_facecolor(AZUL_CAB); celda.get_text().set_color("white"); celda.get_text().set_fontweight("bold")
+            elif filas[fila - 1][0] in resaltar:
+                celda.set_facecolor(AZUL_FILA); celda.get_text().set_fontweight("bold")
+            else:
+                celda.set_facecolor("white")
+        ax.set_title(titulo, fontweight="bold", fontsize=9, pad=4)
+        guardar(fig, FIG, nombre)
+
+
+def generar_tabla_metricas_finales(M):
+    """Tabla visual de resultados: media +- DE de las 33 semillas para RF, SVR, B1 y B0, calculada desde
+    metricas_por_semilla (M). Pearson de B0 'No definido' (prediccion constante en todas las semillas)."""
+    def fmt(v):
+        return f"{v.mean():.3f} ± {v.std(ddof=1):.3f}"
+    filas = []
+    for met in ("RF", "SVR", "B1", "B0"):
+        g = M[M.metodo == met]
+        if len(g) != 33:
+            raise RuntimeError(f"{met}: se esperaban 33 semillas")
+        if g.pearson_r.isna().all():
+            r = "No definido"
+        elif g.pearson_r.notna().all():
+            r = fmt(g.pearson_r)
+        else:
+            raise RuntimeError(f"{met}: Pearson indefinido solo en algunas semillas")
+        filas.append((met, fmt(g.MAE), fmt(g.RMSE), r))
+    _tabla_visual(filas, ("Método", "MAE (BPM)", "RMSE (BPM)", "Pearson r"), (0.22, 0.26, 0.26, 0.26),
+                  "Resultados de los modelos y líneas base en las 33 corridas", "tabla_metricas_finales")
+    return {f[0]: {"MAE": f[1], "RMSE": f[2], "r": f[3]} for f in filas}
+
+
 def main():
     D = load()
     M, T = tables(D)
@@ -348,6 +395,7 @@ def main():
     print("figuras metodologicas (fuentes en pt):", json.dumps(figuras_metodologia.generar(ROOT)))
     print("figuras/ predicho vs referencia (test):", json.dumps(generar_predicho_vs_referencia_test(D, M)))
     print("figuras/ tabla comparacion literatura:", json.dumps(generar_tabla_comparacion_literatura(M), ensure_ascii=False))
+    print("figuras/ tabla metricas finales:", json.dumps(generar_tabla_metricas_finales(M), ensure_ascii=False))
 
 
 if __name__ == "__main__":

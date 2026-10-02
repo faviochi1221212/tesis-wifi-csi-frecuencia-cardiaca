@@ -38,3 +38,8 @@ grabación; el eje horizontal no representa una única serie temporal continua.
 **tabla_comparacion_literatura.png**
 Comparación de las métricas de estimación de frecuencia cardíaca reportadas en trabajos relacionados y en esta tesis. Los
 valores se presentan como referencia y no corresponden a condiciones experimentales equivalentes.
+
+**tabla_metricas_finales.png**
+Resultados de los modelos y líneas base en las 33 corridas. Se reportan el MAE, el RMSE y el coeficiente de Pearson
+(media ± desviación estándar) de Random Forest, SVR, B1 y B0. El coeficiente de Pearson de B0 no está definido porque
+su predicción es constante.
