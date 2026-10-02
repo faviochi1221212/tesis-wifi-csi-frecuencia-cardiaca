@@ -5,16 +5,18 @@ congelados. NO entrena modelos y NO modifica predicciones, splits ni datos.
 Lee (solo lectura):
   resultados/predicciones_rf.csv.gz, resultados/predicciones_svr.csv.gz   (33 semillas x ventanas de prueba)
   resultados/configuraciones_seleccionadas.csv                           (suavizado w elegido por semilla)
-  datos_procesados/sincronizacion_ejemplo.json                           (generado por extraer_sincronizacion.py)
-  datos_procesados/dataset_completo_v3_synced.csv                        (control de las etiquetas y_i)
 Escribe:
   resultados/metricas_por_semilla.csv   MAE, RMSE y Pearson r por semilla y metodo (RF, SVR, B1, B0)
   resultados/metricas_finales.csv       resumen entre las 33 semillas (media, DE, IC95 del MAE)
   FIGURAS DE LA TESIS (figuras/):
-    figura_sincronizacion_csi_smartwatch   Metodologia: lecturas del reloj -> interpolacion -> ventanas -> y_i
     figura_mae_33_corridas                 Resultados: distribucion del MAE de RF, SVR, B1 y B0 en 33 corridas
     figura_comparacion_rf_svr_test         Resultados: referencia vs RF y vs SVR en el test de la semilla 27
     figura_mejora_respecto_b1              Resultados (secundaria) o anexo: reduccion del MAE respecto de B1
+  FIGURAS METODOLOGICAS (codigo/figuras_metodologia.py; lee datos_procesados/*_ejemplo.json y, para controlar las
+  etiquetas y_i, datos_procesados/dataset_completo_v3_synced.csv):
+    figuras/diagrama_proceso_general, figuras/preprocesamiento_antes_despues,
+    figuras/sincronizacion_csi_smartwatch, figuras/diagrama_calibracion,
+    material_adicional/preprocesamiento_etapas_anexo
   MATERIAL ADICIONAL (material_adicional/):
     figura_ejemplo_prediccion_1, figura_ejemplo_prediccion_2   ejemplos por grabacion (sustentacion)
   Cada figura se guarda en PNG (versionado) y PDF (solo local, .gitignore).
@@ -35,10 +37,11 @@ import pandas as pd  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "codigo" / "src"))
-from csi_hr import config as C, splits  # noqa: E402
+sys.path.insert(0, str(ROOT / "codigo"))
+from csi_hr import config as C  # noqa: E402
+import figuras_metodologia  # noqa: E402
 
 RES, FIG, ADIC = ROOT / "resultados", ROOT / "figuras", ROOT / "material_adicional"
-SINCRO_JSON = ROOT / "datos_procesados" / "sincronizacion_ejemplo.json"
 SEEDS = list(range(C.N_RUNS))                    # 0..32
 METHODS = ("RF", "SVR", "B1", "B0")
 KEYS = ["seed", "participante", "pos_id", "seg_id", "win_start"]
@@ -52,7 +55,6 @@ BASE = {"axes.edgecolor": INK2, "xtick.color": INK2, "ytick.color": INK2, "axes.
 ESTILO_RESULTADOS = {**BASE, "font.size": 11, "axes.labelsize": 11, "xtick.labelsize": 10, "ytick.labelsize": 10,
                      "legend.fontsize": 10, "axes.labelcolor": INK, "axes.grid": True, "axes.grid.axis": "y",
                      "grid.color": GRID, "grid.linewidth": 0.8, "figure.facecolor": "white", "axes.facecolor": "white"}
-ESTILO_SINCRONIZACION = {**BASE, "font.size": 11}
 ESTILO_COMPARACION = {**BASE, "font.family": "DejaVu Sans", "font.size": 11, "axes.titlesize": 12, "axes.labelsize": 11,
                       "xtick.labelsize": 10, "ytick.labelsize": 10, "axes.labelcolor": INK,
                       "figure.facecolor": "white", "axes.facecolor": "white"}
@@ -124,47 +126,6 @@ def semilla_mediana(M):
 
 
 # ====================================================================== FIGURAS DE LA TESIS (figuras/)
-def figura_sincronizacion():
-    """Metodologia. Grabacion elegida por criterio objetivo (tabla incluida en el JSON, se recomprueba aqui)."""
-    J = json.loads(SINCRO_JSON.read_text(encoding="utf-8"))
-    R = pd.DataFrame(J["tabla_criterio"])
-    E = R[(R.nw == 5) & (R.min_lect >= 2)].copy(); med = E.unicas.median(); E["dist"] = (E.unicas - med).abs()
-    s = E.sort_values(["dist", "participante", "seg_id"], kind="mergesort").iloc[0]
-    sel = J["seleccion"]
-    if (s.participante, int(s.pos_id), int(s.seg_id)) != (sel["participante"], sel["pos_id"], sel["seg_id"]):
-        raise RuntimeError("el criterio de seleccion no reproduce la grabacion guardada")
-    d = splits.load_df_C()
-    y_ds = d[(d.participante == sel["participante"]) & (d.pos_id == sel["pos_id"])].sort_values("win_start").bpm_watch.values
-    win = J["ventanas"]
-    if not np.allclose([w["y"] for w in win], y_ds, rtol=0, atol=1e-9):
-        raise RuntimeError("las etiquetas y_i del JSON no coinciden con el dataset")
-    a, b = J["xlim"]
-    BLUE = COL["RF"]
-    with estilo(ESTILO_SINCRONIZACION):
-        fig, (ax, axw) = plt.subplots(2, 1, figsize=(8.2, 5.6), sharex=True,
-                                      gridspec_kw={"height_ratios": [3, 1.35], "hspace": 0.08})
-        ax.plot(np.array(J["paquetes_t_s"]), np.array(J["paquetes_hr_interp"]), color="#9a9993", linewidth=1.6,
-                label="Interpolación lineal", zorder=1)
-        ax.scatter(np.array(J["lecturas_t_s"]), np.array(J["lecturas_hr"]), s=46, color=INK, zorder=3,
-                   label="Lecturas del smartwatch")
-        for k, w in enumerate(win):
-            ax.scatter(w["centro"], w["y"], s=52, marker="D", color=BLUE, edgecolor="white", linewidth=0.8, zorder=4,
-                       label="Etiqueta $y_i$ (centro de la ventana)" if k == 0 else None)
-        ax.set_ylabel("Frecuencia cardíaca (BPM)"); ax.grid(True, axis="y", color=GRID)
-        ax.legend(loc="upper right", ncol=1, fontsize=9.5); ax.set_xlim(a, b)
-        for k, w in enumerate(win):
-            lane = len(win) - k
-            axw.hlines(lane, w["ini"], w["fin"], color=BLUE, linewidth=6, alpha=0.35)
-            axw.plot([w["centro"]] * 2, [lane - 0.32, lane + 0.32], color=BLUE, linewidth=1.6)
-        axw.set_yticks(range(1, len(win) + 1))
-        axw.set_yticklabels([f"V{len(win) - j + 1}" for j in range(1, len(win) + 1)], fontsize=9)
-        axw.set_ylim(0.4, len(win) + 0.6); axw.set_ylabel("Ventana CSI", fontsize=10)
-        axw.set_xlabel("Tiempo desde el inicio de la grabación (s)")
-        axw.spines["left"].set_visible(False); axw.tick_params(axis="y", length=0)
-        guardar(fig, FIG, "figura_sincronizacion_csi_smartwatch")
-    return {**sel, "ventanas": len(win), "mediana_lecturas_unicas": float(med)}
-
-
 def figura_mae_33_corridas(M):
     """Resultados. Boxplot + 33 puntos (desplazamiento horizontal fijo) + media, para RF, SVR, B1 y B0."""
     with estilo(ESTILO_RESULTADOS):
@@ -305,11 +266,11 @@ def main():
     for _, r in T.iterrows():
         pr = r.Pearson_nota or f"{r.Pearson_media:.3f} ± {r.Pearson_de:.3f}"
         print(f"  {r.metodo:4s} MAE {r.MAE_media:.3f} ± {r.MAE_de:.3f} | RMSE {r.RMSE_media:.3f} ± {r.RMSE_de:.3f} | r {pr}")
-    print("figuras/ sincronizacion:", json.dumps(figura_sincronizacion()))
     print("figuras/ MAE 33 corridas (medias):", json.dumps(figura_mae_33_corridas(M)))
     print("figuras/ comparacion RF/SVR:", json.dumps(figura_comparacion_rf_svr(D, M)))
     print("figuras/ mejora respecto de B1:", json.dumps(figura_mejora_respecto_b1(M)))
     print("material_adicional/ ejemplos:", json.dumps(ejemplos_por_grabacion(D, M)))
+    print("figuras metodologicas (fuentes en pt):", json.dumps(figuras_metodologia.generar(ROOT)))
 
 
 if __name__ == "__main__":

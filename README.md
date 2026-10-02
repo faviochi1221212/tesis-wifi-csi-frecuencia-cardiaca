@@ -16,7 +16,9 @@ No es un escenario de participantes nuevos.
 codigo/src/csi_hr/        librería del experimento
 codigo/pipeline/          final_personalized.py: ejecuta el experimento final
 codigo/generar_resultados.py   métricas y figuras a partir de los datos entregados
-codigo/extraer_sincronizacion.py   insumo de la figura de sincronización (requiere los datos crudos)
+codigo/figuras_metodologia.py  figuras metodológicas (las llama generar_resultados.py)
+codigo/extraer_sincronizacion.py, codigo/extraer_preprocesamiento.py
+                          insumos de las figuras metodológicas (requieren los datos crudos)
 datos_procesados/         datos de entrada congelados (ventanas, características, particiones)
 resultados/               predicciones, métricas, configuraciones elegidas y auditoría de fuga
 figuras/                  figuras utilizadas en la tesis
@@ -49,6 +51,7 @@ pip install -r requirements.txt
 | `features_rf_3brazos.csv.gz` | 24 características por ventana. El experimento usa las filas `arm == "E1a"` (54 subportadoras activas). |
 | `splits_rf.json` | Particiones entrenamiento/prueba de las 33 semillas |
 | `sincronizacion_ejemplo.json` | Valores de la figura de sincronización y tabla del criterio de selección. Lo genera `codigo/extraer_sincronizacion.py` a partir de los datos crudos (no es un insumo del experimento). |
+| `preprocesamiento_ejemplo.json` | Amplitud original de una subportadora (participante 002, posición 1; primera de las 20 seleccionadas automáticamente por energía en banda) y energías de las 54 subportadoras activas. Lo genera `codigo/extraer_preprocesamiento.py` a partir de los PCAP (no es un insumo del experimento). |
 
 Muestra final: **125 participantes, 1481 grabaciones, 7397 ventanas**, 12 posiciones estáticas (códigos 1, 2 y
 4–13). Cada ventana tiene 231 paquetes con un paso de 57 (≈30 s a la frecuencia nominal de 7,7 Hz; el muestreo
@@ -77,11 +80,23 @@ El script lee los datos entregados (no entrena), escribe `resultados/metricas_po
 `resultados/metricas_finales.csv`, y regenera todas las figuras. Los PDF se generan solo localmente
 (`.gitignore`); el repositorio versiona los PNG.
 
-### Figuras utilizadas en la tesis (`figuras/`)
+### Figuras metodológicas (`figuras/`)
 
 | Figura | Ubicación | Contenido |
 |---|---|---|
-| `figura_sincronizacion_csi_smartwatch.png` | Metodología | Lecturas del smartwatch, interpolación lineal, ventanas CSI y etiqueta y_i de cada ventana (participante 002, posición 1, elegido por el número mediano de lecturas del reloj). |
+| `diagrama_proceso_general.png` | Metodología | Flujo completo de la metodología. |
+| `preprocesamiento_antes_despues.png` | Metodología | Efecto del preprocesamiento sobre una subportadora CSI real. |
+| `sincronizacion_csi_smartwatch.png` | Metodología | Sincronización de las lecturas del smartwatch y construcción de y_i. |
+| `diagrama_calibracion.png` | Experimentación | Procedimiento secuencial de selección de características e hiperparámetros. |
+
+Las figuras metodológicas se dibujan a su tamaño de inserción (16 cm de ancho; fuentes de 8–9 pt). La grabación de
+ejemplo (participante 002, posición 1) se eligió por el número mediano de lecturas del reloj, sin mirar la señal CSI.
+La tabla de calibración está en `resultados/tabla_calibracion.md` y los pies de figura, en `figuras/pies_de_figura.md`.
+
+### Figuras de resultados (`figuras/`)
+
+| Figura | Ubicación | Contenido |
+|---|---|---|
 | `figura_mae_33_corridas.png` | Resultados | Distribución del MAE de RF, SVR, B1 y B0 en las 33 corridas (cajas, corridas individuales y media). |
 | `figura_comparacion_rf_svr_test.png` | Resultados | Compara la frecuencia cardíaca de referencia con las estimaciones de Random Forest y SVR sobre el mismo conjunto de prueba representativo correspondiente a la semilla 27. |
 | `figura_mejora_respecto_b1.png` | Resultados o anexo, según el espacio | Reducción del MAE de RF y SVR respecto de B1 en cada semilla (figura secundaria). |
@@ -96,6 +111,8 @@ Las ventanas se ordenan por participante, grabación y tiempo, y las curvas se i
 grabaciones de prueba del participante 048 (semilla 27; posiciones 9 y 5). La primera es la grabación con el MAE
 más cercano a la mediana de las 249 grabaciones de prueba; la segunda, la otra grabación de prueba del mismo
 participante. Son ejemplos locales para la sustentación, no figuras principales.
+
+`preprocesamiento_etapas_anexo.png` (Anexo) detalla las cinco etapas del preprocesamiento sobre la misma subportadora.
 
 ## 7. Modelos y líneas base
 
