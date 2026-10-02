@@ -257,6 +257,81 @@ def ejemplos_por_grabacion(D, M):
     return info
 
 
+# ====================================================================== PIEZAS CON EL ESTILO DE LAS FIGURAS ANTIGUAS
+# Tamano de insercion: 16 cm de ancho (6.3 in), fuentes de 8-9 pt, 300 dpi.
+ESTILO_CLASICO = {"font.family": "DejaVu Sans", "font.size": 8.5, "axes.titlesize": 9, "axes.labelsize": 8.5,
+                  "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "figure.facecolor": "white",
+                  "axes.facecolor": "white", "savefig.dpi": 300, "savefig.bbox": "tight", "savefig.pad_inches": 0.03}
+AZUL_PRED, GRIS_REF, AZUL_CAB, AZUL_FILA = "#2196f3", "#8a8a8a", "#1565c0", "#e3f2fd"
+
+
+def generar_predicho_vs_referencia_test(D, M):
+    """Una sola figura: referencia (gris) y prediccion SVR (azul) en las 1241 ventanas de prueba de la semilla 27,
+    ordenadas por participante -> grabacion -> win_start. El eje X es el indice ordenado ("Muestra"), no tiempo."""
+    seed = SEMILLA_REPRESENTATIVA
+    if semilla_mediana(M) != seed:
+        raise RuntimeError("la semilla de desempeno mediano ya no es 27")
+    g = D[D.seed == seed].sort_values(["participante", "seg_id", "win_start"]).reset_index(drop=True)
+    if len(g) != 1241:
+        raise RuntimeError(f"se esperaban 1241 ventanas de prueba y hay {len(g)}")
+    m = metrics(g.y.values, g.SVR.values)
+    x = np.arange(len(g))
+    with estilo(ESTILO_CLASICO):
+        fig, ax = plt.subplots(figsize=(6.3, 2.6))
+        ax.plot(x, g.y.values, color=GRIS_REF, linewidth=0.8, label="BPM Referencia")
+        ax.plot(x, g.SVR.values, color=AZUL_PRED, linewidth=0.9, label="BPM Predicho (SVR)")
+        ax.set_title(f"BPM Predicho vs Referencia - Conjunto de Test\nMAE = {m['MAE']:.2f} BPM | r = {m['pearson_r']:.3f}",
+                     fontweight="bold", fontsize=9)
+        ax.set_xlabel("Muestra"); ax.set_ylabel("Frecuencia cardíaca (BPM)")
+        ax.grid(True, color="#e0e0e0", linewidth=0.6); ax.set_axisbelow(True)
+        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+        guardar(fig, FIG, "figura_predicho_vs_referencia_test")
+    return {"semilla": seed, "modelo": "SVR", "ventanas": len(g), "MAE": round(m["MAE"], 4), "r": round(m["pearson_r"], 4)}
+
+
+# Valores publicados (fuentes primarias verificadas):
+#   Alzaabi, Saied y Arslan (2025), IEEE JTEHM, doi:10.1109/JTEHM.2025.3624469 (PMC12599888): MAE 9.26 BPM (DWT/CWT, sin ML).
+#   Kocheta, Bhatia y Obraczka (2025), arXiv:2510.24744v1, Tabla I (eHealth): MAE 0.27 +- 0.03 (10 s), 0.17 +- 0.01 (30 s).
+LITERATURA = [("Alzaabi et al. (2025)", "DWT/CWT (sin ML)", "9.26", "—", "—"),
+              ("Kocheta et al. (2025)\n— PulseFi", "LSTM", "0.27 ± 0.03 (10 s)\n0.17 ± 0.01 (30 s)", "—", "—")]
+
+
+def generar_tabla_comparacion_literatura(M):
+    """Tabla visual: literatura (valores publicados) y este trabajo (media +- DE de las 33 semillas, calculada desde
+    metricas_por_semilla)."""
+    def fmt(v):
+        return f"{v.mean():.3f} ± {v.std(ddof=1):.3f}"
+    propias = []
+    for fam, metodo in (("RF", "RF residual\n+ suavizado"), ("SVR", "SVR residual\n+ suavizado")):
+        g = M[M.metodo == fam]
+        if len(g) != 33:
+            raise RuntimeError(f"{fam}: se esperaban 33 semillas")
+        propias.append((f"Este trabajo ({fam})", metodo, fmt(g.MAE), fmt(g.RMSE), fmt(g.pearson_r)))
+    filas = LITERATURA + propias
+    with estilo(ESTILO_CLASICO):
+        lineas = [1] + [max(c.count("\n") + 1 for c in f) for f in filas]          # lineas por fila (cabecera = 1)
+        alto_linea, alto_min = 0.155, 0.27                                          # pulgadas
+        altos = [max(alto_min, alto_linea * n + 0.1) for n in lineas]
+        fig = plt.figure(figsize=(6.3, sum(altos) + 0.05))
+        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")                            # la tabla ocupa los 16 cm de ancho
+        tab = ax.table(cellText=[list(f) for f in filas], colLabels=["Estudio", "Método", "MAE", "RMSE", "CC"],
+                       colWidths=[0.235, 0.19, 0.215, 0.18, 0.18], cellLoc="center", loc="upper center")
+        tab.auto_set_font_size(False); tab.set_fontsize(8)
+        alto_fig = sum(altos) + 0.05
+        for (fila, col), celda in tab.get_celld().items():
+            celda.set_edgecolor("#000000"); celda.set_linewidth(0.6)
+            celda.set_height(altos[fila] / alto_fig)
+            if fila == 0:
+                celda.set_facecolor(AZUL_CAB); celda.get_text().set_color("white"); celda.get_text().set_fontweight("bold")
+            elif filas[fila - 1][0].startswith("Este trabajo"):
+                celda.set_facecolor(AZUL_FILA); celda.get_text().set_fontweight("bold")
+            else:
+                celda.set_facecolor("white")
+        ax.set_title("Comparación con la literatura", fontweight="bold", fontsize=9, pad=4)
+        guardar(fig, FIG, "tabla_comparacion_literatura")
+    return {f[0]: {"MAE": f[2], "RMSE": f[3], "CC": f[4]} for f in propias}
+
+
 def main():
     D = load()
     M, T = tables(D)
@@ -271,6 +346,8 @@ def main():
     print("figuras/ mejora respecto de B1:", json.dumps(figura_mejora_respecto_b1(M)))
     print("material_adicional/ ejemplos:", json.dumps(ejemplos_por_grabacion(D, M)))
     print("figuras metodologicas (fuentes en pt):", json.dumps(figuras_metodologia.generar(ROOT)))
+    print("figuras/ predicho vs referencia (test):", json.dumps(generar_predicho_vs_referencia_test(D, M)))
+    print("figuras/ tabla comparacion literatura:", json.dumps(generar_tabla_comparacion_literatura(M), ensure_ascii=False))
 
 
 if __name__ == "__main__":

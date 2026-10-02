@@ -29,3 +29,12 @@ interviene en ninguna decisión de selección.
 Comparación entre la frecuencia cardíaca de referencia y la estimada por Random Forest y SVR en el conjunto de prueba de
 la semilla 27. Las ventanas se ordenan por participante, grabación y tiempo, y las curvas se interrumpen entre
 grabaciones.
+
+**figura_predicho_vs_referencia_test.png**
+Comparación entre la frecuencia cardíaca de referencia y la estimada mediante SVR en el conjunto de prueba de la semilla
+27. Las ventanas se presentan según su índice ordenado por participante, grabación y posición temporal dentro de cada
+grabación; el eje horizontal no representa una única serie temporal continua.
+
+**tabla_comparacion_literatura.png**
+Comparación de las métricas de estimación de frecuencia cardíaca reportadas en trabajos relacionados y en esta tesis. Los
+valores se presentan como referencia y no corresponden a condiciones experimentales equivalentes.
