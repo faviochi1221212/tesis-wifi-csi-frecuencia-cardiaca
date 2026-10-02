@@ -105,6 +105,7 @@ Los pies de figura están en `figuras/pies_de_figura.md`.
 | `figura_comparacion_rf_svr_test.png` | Resultados | Compara la frecuencia cardíaca de referencia con las estimaciones de Random Forest y SVR sobre el mismo conjunto de prueba representativo correspondiente a la semilla 27. |
 | `figura_mejora_respecto_b1.png` | Resultados o anexo, según el espacio | Reducción del MAE de RF y SVR respecto de B1 en cada semilla (figura secundaria). |
 | `figura_predicho_vs_referencia_test.png` | Resultados | Comparación entre la frecuencia cardíaca de referencia y la estimada mediante SVR sobre el conjunto de prueba representativo de la semilla 27. |
+| `figura_predicho_vs_referencia_test_rf.png` | Resultados | Comparación entre la frecuencia cardíaca de referencia y la estimada mediante Random Forest sobre el mismo conjunto de prueba de la semilla 27. |
 | `tabla_comparacion_literatura.png` | Resultados / Discusión | Comparación visual de las métricas reportadas en trabajos relacionados y los resultados finales de RF y SVR. |
 | `tabla_metricas_finales.png` | Resultados | Versión visual de la tabla de MAE, RMSE y Pearson r (media ± DE) de RF, SVR, B1 y B0 en las 33 corridas. |
 

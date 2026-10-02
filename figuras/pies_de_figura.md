@@ -35,6 +35,12 @@ Comparación entre la frecuencia cardíaca de referencia y la estimada mediante 
 27. Las ventanas se presentan según su índice ordenado por participante, grabación y posición temporal dentro de cada
 grabación; el eje horizontal no representa una única serie temporal continua.
 
+**figura_predicho_vs_referencia_test_rf.png**
+Comparación entre la frecuencia cardíaca de referencia y la estimada mediante Random Forest en el conjunto de prueba de
+la semilla 27, con el mismo orden de ventanas que la figura de SVR. Se usa la semilla 27 por ser la mediana del MAE
+conjunto de RF y SVR, el mismo criterio con el que se eligió la semilla de la figura de SVR, para que ambas figuras
+muestren las mismas 1241 ventanas y puedan compararse directamente; para RF en solitario, la semilla de MAE mediano es la 1.
+
 **tabla_comparacion_literatura.png**
 Comparación de las métricas de estimación de frecuencia cardíaca reportadas en trabajos relacionados y en esta tesis. Los
 valores se presentan como referencia y no corresponden a condiciones experimentales equivalentes.

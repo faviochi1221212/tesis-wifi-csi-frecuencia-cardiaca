@@ -219,9 +219,10 @@ def sincronizacion(J, fig_dir):
 # ====================================================================== calibracion
 def diagrama_calibracion(fig_dir):
     """Fila unica: datos -> [Etapa 1 -> Etapa 2] (validacion interna) -> reentrenamiento -> prediccion unica del test."""
+    nota = 0.36                                            # franja inferior para la nota de siglas
     with _estilo():
-        fig, ax = _lienzo(1.90)
-        bh, yc, g = 0.92, 0.88, 0.17                       # alto de caja, centro vertical, hueco de flecha
+        fig, ax = _lienzo(1.90 + nota)
+        bh, yc, g = 0.92, 0.88 + nota, 0.17                # alto de caja, centro vertical, hueco de flecha
         anchos = {"datos": 0.92, "e1": 1.10, "e2": 1.10, "reent": 1.16, "test": 0.98}
         pad_band = 0.08
         x = 0.04
@@ -255,6 +256,10 @@ def diagrama_calibracion(fig_dir):
         _flecha(ax, (cx_1 + anchos["e1"] / 2, yc), (cx_2 - anchos["e2"] / 2, yc))
         _flecha(ax, (band_x1, yc), (cx_r - anchos["reent"] / 2, yc))
         _flecha(ax, (cx_r + anchos["reent"] / 2, yc), (cx_t - anchos["test"] / 2, yc))
+        # Siglas segun nested.py (mutual_info_regression, permutation_importance, n_features, smooth_windows)
+        ax.text(0.04, 0.04, "MI: información mutua.  PI: importancia por permutación.  N: número de características.\n"
+                "w: ventana de suavizado (media móvil centrada dentro de cada grabación).", ha="left", va="bottom",
+                fontsize=8, color=INK2, linespacing=1.2)
         return _guardar(fig, fig_dir, "diagrama_calibracion")
 
 

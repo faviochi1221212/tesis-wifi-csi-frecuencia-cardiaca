@@ -263,30 +263,46 @@ ESTILO_CLASICO = {"font.family": "DejaVu Sans", "font.size": 8.5, "axes.titlesiz
                   "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "figure.facecolor": "white",
                   "axes.facecolor": "white", "savefig.dpi": 300, "savefig.bbox": "tight", "savefig.pad_inches": 0.03}
 AZUL_PRED, GRIS_REF, AZUL_CAB, AZUL_FILA = "#2196f3", "#8a8a8a", "#1565c0", "#e3f2fd"
+VERDE_PRED = "#2e7d32"                            # RF en el panel unico (distinto del azul SVR y del azul RF de COL)
 
 
-def generar_predicho_vs_referencia_test(D, M):
-    """Una sola figura: referencia (gris) y prediccion SVR (azul) en las 1241 ventanas de prueba de la semilla 27,
-    ordenadas por participante -> grabacion -> win_start. El eje X es el indice ordenado ("Muestra"), no tiempo."""
+def _predicho_vs_referencia(D, M, modelo, color, nombre, sufijo=""):
+    """Una sola figura: referencia (gris) y prediccion del modelo en las 1241 ventanas de prueba de la semilla 27,
+    ordenadas por participante -> grabacion -> win_start. El eje X es el indice ordenado ("Muestra"), no tiempo.
+    MAE y r se calculan desde las predicciones y se verifican contra metricas_por_semilla."""
     seed = SEMILLA_REPRESENTATIVA
     if semilla_mediana(M) != seed:
         raise RuntimeError("la semilla de desempeno mediano ya no es 27")
     g = D[D.seed == seed].sort_values(["participante", "seg_id", "win_start"]).reset_index(drop=True)
     if len(g) != 1241:
         raise RuntimeError(f"se esperaban 1241 ventanas de prueba y hay {len(g)}")
-    m = metrics(g.y.values, g.SVR.values)
+    m = metrics(g.y.values, g[modelo].values)
+    ref = M[(M.metodo == modelo) & (M.seed == seed)].iloc[0]
+    if not (np.isclose(m["MAE"], ref.MAE) and np.isclose(m["pearson_r"], ref.pearson_r)):
+        raise RuntimeError(f"{modelo}: MAE/r recalculados no coinciden con metricas_por_semilla")
     x = np.arange(len(g))
     with estilo(ESTILO_CLASICO):
         fig, ax = plt.subplots(figsize=(6.3, 2.6))
         ax.plot(x, g.y.values, color=GRIS_REF, linewidth=0.8, label="BPM Referencia")
-        ax.plot(x, g.SVR.values, color=AZUL_PRED, linewidth=0.9, label="BPM Predicho (SVR)")
-        ax.set_title(f"BPM Predicho vs Referencia - Conjunto de Test\nMAE = {m['MAE']:.2f} BPM | r = {m['pearson_r']:.3f}",
-                     fontweight="bold", fontsize=9)
+        ax.plot(x, g[modelo].values, color=color, linewidth=0.9, label=f"BPM Predicho ({modelo})")
+        ax.set_title(f"BPM Predicho vs Referencia - Conjunto de Test\nMAE = {m['MAE']:.2f} BPM | r = {m['pearson_r']:.3f}"
+                     f"{sufijo}", fontweight="bold", fontsize=9)
         ax.set_xlabel("Muestra"); ax.set_ylabel("Frecuencia cardíaca (BPM)")
         ax.grid(True, color="#e0e0e0", linewidth=0.6); ax.set_axisbelow(True)
         ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
-        guardar(fig, FIG, "figura_predicho_vs_referencia_test")
-    return {"semilla": seed, "modelo": "SVR", "ventanas": len(g), "MAE": round(m["MAE"], 4), "r": round(m["pearson_r"], 4)}
+        guardar(fig, FIG, nombre)
+    return {"semilla": seed, "modelo": modelo, "ventanas": len(g), "MAE": round(m["MAE"], 4), "r": round(m["pearson_r"], 4)}
+
+
+def generar_predicho_vs_referencia_test(D, M):
+    """SVR (azul), semilla 27."""
+    return _predicho_vs_referencia(D, M, "SVR", AZUL_PRED, "figura_predicho_vs_referencia_test")
+
+
+def generar_predicho_vs_referencia_test_rf(D, M):
+    """RF (verde), misma semilla 27 y mismas 1241 ventanas que la figura SVR para permitir la comparacion directa.
+    La 27 es la mediana del MAE conjunto (RF+SVR)/2; para RF en solitario la semilla mediana es otra (la 1)."""
+    return _predicho_vs_referencia(D, M, "RF", VERDE_PRED, "figura_predicho_vs_referencia_test_rf", " | Semilla 27")
 
 
 # Valores publicados (fuentes primarias verificadas):
@@ -394,6 +410,7 @@ def main():
     print("material_adicional/ ejemplos:", json.dumps(ejemplos_por_grabacion(D, M)))
     print("figuras metodologicas (fuentes en pt):", json.dumps(figuras_metodologia.generar(ROOT)))
     print("figuras/ predicho vs referencia (test):", json.dumps(generar_predicho_vs_referencia_test(D, M)))
+    print("figuras/ predicho vs referencia RF (test):", json.dumps(generar_predicho_vs_referencia_test_rf(D, M)))
     print("figuras/ tabla comparacion literatura:", json.dumps(generar_tabla_comparacion_literatura(M), ensure_ascii=False))
     print("figuras/ tabla metricas finales:", json.dumps(generar_tabla_metricas_finales(M), ensure_ascii=False))
 
