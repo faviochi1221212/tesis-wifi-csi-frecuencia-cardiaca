@@ -1,0 +1,9 @@
+# Versiones con las que se ejecutó y verificó el experimento final (Python 3.10.11).
+numpy==2.1.1
+pandas==2.2.3
+scikit-learn==1.6.1
+scipy==1.15.3
+joblib==1.4.2
+matplotlib==3.10.9
+# Solo necesario para recalcular características desde la señal (módulos de apoyo del preprocesamiento):
+PyWavelets==1.8.0
