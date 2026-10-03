@@ -308,44 +308,24 @@ def generar_predicho_vs_referencia_test_rf(D, M):
 # Valores publicados (fuentes primarias verificadas):
 #   Alzaabi, Saied y Arslan (2025), IEEE JTEHM, doi:10.1109/JTEHM.2025.3624469 (PMC12599888): MAE 9.26 BPM (DWT/CWT, sin ML).
 #   Kocheta, Bhatia y Obraczka (2025), arXiv:2510.24744v1, Tabla I (eHealth): MAE 0.27 +- 0.03 (10 s), 0.17 +- 0.01 (30 s).
-LITERATURA = [("Alzaabi et al. (2025)", "DWT/CWT (sin ML)", "9.26", "—", "—"),
-              ("Kocheta et al. (2025)\n— PulseFi", "LSTM", "0.27 ± 0.03 (10 s)\n0.17 ± 0.01 (30 s)", "—", "—")]
+LITERATURA = [("Alzaabi et al. (2025)", "DWT/CWT", "9.26"),
+              ("Kocheta et al. (2025), PulseFi", "LSTM, 10 s", "0.27 ± 0.03"),
+              ("Kocheta et al. (2025), PulseFi", "LSTM, 30 s", "0.17 ± 0.01")]
 
 
 def generar_tabla_comparacion_literatura(M):
-    """Tabla visual: literatura (valores publicados) y este trabajo (media +- DE de las 33 semillas, calculada desde
-    metricas_por_semilla)."""
-    def fmt(v):
-        return f"{v.mean():.3f} ± {v.std(ddof=1):.3f}"
+    """Tabla visual de 3 columnas (Estudio, Metodo, MAE): literatura (valores publicados) y este trabajo (MAE media +- DE
+    de las 33 semillas, calculada desde metricas_por_semilla). Sin RMSE ni CC: los trabajos externos no los reportan."""
     propias = []
-    for fam, metodo in (("RF", "RF residual\n+ suavizado"), ("SVR", "SVR residual\n+ suavizado")):
+    for fam in ("RF", "SVR"):
         g = M[M.metodo == fam]
         if len(g) != 33:
             raise RuntimeError(f"{fam}: se esperaban 33 semillas")
-        propias.append((f"Este trabajo ({fam})", metodo, fmt(g.MAE), fmt(g.RMSE), fmt(g.pearson_r)))
-    filas = LITERATURA + propias
-    with estilo(ESTILO_CLASICO):
-        lineas = [1] + [max(c.count("\n") + 1 for c in f) for f in filas]          # lineas por fila (cabecera = 1)
-        alto_linea, alto_min = 0.155, 0.27                                          # pulgadas
-        altos = [max(alto_min, alto_linea * n + 0.1) for n in lineas]
-        fig = plt.figure(figsize=(6.3, sum(altos) + 0.05))
-        ax = fig.add_axes([0, 0, 1, 1]); ax.axis("off")                            # la tabla ocupa los 16 cm de ancho
-        tab = ax.table(cellText=[list(f) for f in filas], colLabels=["Estudio", "Método", "MAE", "RMSE", "CC"],
-                       colWidths=[0.235, 0.19, 0.215, 0.18, 0.18], cellLoc="center", loc="upper center")
-        tab.auto_set_font_size(False); tab.set_fontsize(8)
-        alto_fig = sum(altos) + 0.05
-        for (fila, col), celda in tab.get_celld().items():
-            celda.set_edgecolor("#000000"); celda.set_linewidth(0.6)
-            celda.set_height(altos[fila] / alto_fig)
-            if fila == 0:
-                celda.set_facecolor(AZUL_CAB); celda.get_text().set_color("white"); celda.get_text().set_fontweight("bold")
-            elif filas[fila - 1][0].startswith("Este trabajo"):
-                celda.set_facecolor(AZUL_FILA); celda.get_text().set_fontweight("bold")
-            else:
-                celda.set_facecolor("white")
-        ax.set_title("Comparación con la literatura", fontweight="bold", fontsize=9, pad=4)
-        guardar(fig, FIG, "tabla_comparacion_literatura")
-    return {f[0]: {"MAE": f[2], "RMSE": f[3], "CC": f[4]} for f in propias}
+        propias.append(("Este trabajo", fam, f"{g.MAE.mean():.3f} ± {g.MAE.std(ddof=1):.3f}"))
+    _tabla_visual(LITERATURA + propias, ("Estudio", "Método", "MAE (BPM)"), (0.46, 0.22, 0.32),
+                  "Comparación del MAE con trabajos relacionados", "tabla_comparacion_literatura",
+                  resaltar=("Este trabajo",))
+    return {f"{f[0]} ({f[1]})": {"MAE": f[2]} for f in propias}
 
 
 def _tabla_visual(filas, cabecera, anchos, titulo, nombre, resaltar=()):
